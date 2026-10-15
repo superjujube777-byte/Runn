@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prévisions Chrono</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#0A1C7A">
+<meta name="description" content="Chronos, allures, vitesses, VMA et zones cardio à partir de tes records et de tes séances.">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Concept : une piste d'athlétisme. Bandeau bleu avec couloirs qui s'effacent vers la droite,
+   chiffres penchés comme sur un tableau de chronométrage, feuille de saisie claire.
+   Palette : bleu piste, orange signal, craie, encre marine. */
+:root {
+  --bg: #F2F5FA;
+  --surface: #FFFFFF;
+  --field: #F7F9FD;
+  --ink: #0A1230;
+  --muted: #4F5D7C;
+  --line: #D3DAEA;
+  --accent: #1239D6;
+  --accent-ink: #FFFFFF;
+  --hot: #FF4A1C;
+  --good: #0E8A57;
+  --warn: #B25A00;
+  --hero-a: #1642E8;
+  --hero-b: #0A1C7A;
+  --board: #070D24;
+  --board-ink: #F4F7FF;
+  --board-dim: #8E9BC4;
+  --c-seuil: #FF4A1C;
+  --c-vo2: #1239D6;
+  --c-vma: #8B2FE0;
+  --f-display: "Big Shoulders Display", "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+  --f-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #050A1C; --surface: #0D1531; --field: #09102A; --ink: #EAF0FF; --muted: #93A1C9;
+    --line: #1E2A53; --accent: #6C90FF; --accent-ink: #050A1C; --hot: #FF6A3D;
+    --good: #4CC79A; --warn: #E3A24A; --hero-a: #1B46EA; --hero-b: #08155E;
+    --board: #02050F; --board-ink: #F4F7FF; --board-dim: #7F8DB8;
+    --c-seuil: #FF6A3D; --c-vo2: #6C90FF; --c-vma: #B57CFF;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #050A1C; --surface: #0D1531; --field: #09102A; --ink: #EAF0FF; --muted: #93A1C9;
+  --line: #1E2A53; --accent: #6C90FF; --accent-ink: #050A1C; --hot: #FF6A3D;
+  --good: #4CC79A; --warn: #E3A24A; --hero-a: #1B46EA; --hero-b: #08155E;
+  --board: #02050F; --board-ink: #F4F7FF; --board-dim: #7F8DB8;
+  --c-seuil: #FF6A3D; --c-vo2: #6C90FF; --c-vma: #B57CFF;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font: 500 15px/1.45 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+.wrap { max-width: 720px; margin: 0 auto; }
+.bleed {
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px))) calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* Bandeau d'en-tête */
+.hero {
+  position: relative; overflow: hidden; color: #fff;
+  background: linear-gradient(120deg, var(--hero-a), var(--hero-b));
+  padding-top: 26px; padding-bottom: 46px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), 0 100%);
+}
+.hero::before {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(180deg, transparent 0 34px, rgba(255,255,255,.26) 34px 36px);
+  -webkit-mask-image: linear-gradient(90deg, transparent 5%, #000 85%);
+  mask-image: linear-gradient(90deg, transparent 5%, #000 85%);
+}
+.hero-in { position: relative; max-width: 720px; margin: 0 auto; }
+.kicker { font: 500 12px/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; opacity: .85; margin: 0 0 10px; }
+h1 {
+  font: 900 clamp(46px, 14vw, 78px)/.9 var(--f-display); text-transform: uppercase; margin: 0 0 12px;
+  transform: skewX(-8deg); transform-origin: left bottom; letter-spacing: .01em; text-wrap: balance;
+}
+.lede { margin: 0; max-width: 46ch; color: rgba(255,255,255,.88); font-weight: 500; }
+
+/* Bandeau collant avec les trois temps */
+.board {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  margin-top: -22px;
+  background: var(--board); color: var(--board-ink);
+  border-top: 3px solid var(--hot);
+  padding-top: 10px; padding-bottom: 10px;
+}
+.board-in { max-width: 720px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); }
+.cell { min-width: 0; padding: 0 10px; border-left: 2px solid rgba(255,255,255,.14); }
+.cell:first-child { padding-left: 0; border-left: 0; }
+.cell .lab { font: 500 11px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--board-dim); }
+.cell .big {
+  font: 900 clamp(30px, 9.6vw, 48px)/1 var(--f-display); font-variant-numeric: tabular-nums; margin-top: 4px; white-space: nowrap;
+  transform: skewX(-8deg); transform-origin: left bottom;
+}
+.cell .sub { font: 400 12px/1.2 var(--f-mono); color: var(--board-dim); font-variant-numeric: tabular-nums; margin-top: 3px; white-space: nowrap; }
+.cell .sub b { color: var(--hot); font-weight: 500; }
+
+section { padding-top: 30px; }
+.sec-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+.sec-head::after { content: ""; flex: 1; height: 3px; background: repeating-linear-gradient(90deg, var(--line) 0 12px, transparent 12px 20px); }
+h2 { font: 900 30px/1 var(--f-display); text-transform: uppercase; margin: 0; transform: skewX(-8deg); transform-origin: left bottom; letter-spacing: .01em; white-space: nowrap; }
+.hint { color: var(--muted); font-size: 13.5px; margin: 6px 0 14px; max-width: 60ch; }
+
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 380px) { .grid.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+label.f { display: flex; flex-direction: column; gap: 5px; min-width: 0; position: relative; }
+label.f > span { font: 500 11.5px/1.2 var(--f-mono); letter-spacing: .06em; color: var(--muted); text-transform: uppercase; }
+input[type=text], input[type=number], input:not([type]), select {
+  width: 100%; min-width: 0; min-height: 48px; font: 600 17px/1.2 var(--f-mono); color: var(--ink);
+  background: var(--field); border: 2px solid var(--line); border-radius: 8px; padding: 10px 12px;
+  font-variant-numeric: tabular-nums;
+}
+select { font-family: var(--f-body); font-weight: 700; }
+input.calc { border-style: dashed; background: transparent; color: var(--accent); }
+label.f .calc-tag { position: absolute; right: 10px; top: 37px; font: normal 500 10px/1 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); pointer-events: none; }
+input:focus-visible, select:focus-visible, button:focus-visible, .chk input:focus-visible + span {
+  outline: 3px solid var(--accent); outline-offset: 1px; border-color: var(--accent);
+}
+.note { font: 400 12px/1.4 var(--f-mono); color: var(--muted); margin-top: 8px; }
+
+/* Puces penchées */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.chip {
+  appearance: none; cursor: pointer; transform: skewX(-10deg);
+  border: 2px solid var(--line); background: var(--surface); color: var(--ink);
+  padding: 8px 14px; min-height: 40px;
+  font: 800 16px/1 var(--f-display); letter-spacing: .04em; text-transform: uppercase;
+}
+.chip > span { display: inline-block; transform: skewX(10deg); }
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip.solid { background: var(--hot); border-color: var(--hot); color: #fff; }
+.chips-label { font: 500 11.5px/1.2 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 8px; }
+
+/* Séances */
+.sessions { display: flex; flex-direction: column; gap: 12px; }
+.sess { background: var(--surface); border: 2px solid var(--line); border-radius: 10px; padding: 12px; --c: var(--accent); }
+.sess[data-type="seuil"] { --c: var(--c-seuil); }
+.sess[data-type="vo2"] { --c: var(--c-vo2); }
+.sess[data-type="vma"] { --c: var(--c-vma); }
+.sess.off { opacity: .55; }
+.sess-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex: none; }
+.sess-head select { flex: 1; }
+.chk { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font: 700 13px/1 var(--f-body); white-space: nowrap; }
+.chk input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.chk span { display: inline-block; width: 26px; height: 26px; border-radius: 6px; border: 2px solid var(--muted); position: relative; flex: none; }
+.chk input:checked + span { background: var(--accent); border-color: var(--accent); }
+.chk input:checked + span::after { content: ""; position: absolute; left: 7px; top: 2px; width: 7px; height: 13px; border: solid var(--accent-ink); border-width: 0 3px 3px 0; transform: rotate(45deg); }
+.del { appearance: none; border: 0; background: none; color: var(--muted); font: 500 24px/1 var(--f-body); padding: 6px 10px; cursor: pointer; border-radius: 6px; min-height: 40px; }
+.del:hover { color: var(--hot); }
+.sess-grid { display: grid; grid-template-columns: 76px minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.sess-out { margin-top: 10px; font: 400 12.5px/1.5 var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.sess-out b { color: var(--ink); font-weight: 500; }
+.sess-err { margin-top: 10px; font: 600 13px/1.4 var(--f-body); color: var(--hot); }
+.add { margin-top: 12px; appearance: none; border: 2px dashed var(--muted); background: none; color: var(--ink); font: 800 17px/1 var(--f-display); letter-spacing: .05em; text-transform: uppercase; padding: 13px 14px; border-radius: 10px; cursor: pointer; width: 100%; }
+.add:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Tableaux */
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th { font: 500 11px/1.2 var(--f-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); text-align: right; padding: 0 8px 8px; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+td { padding: 11px 8px; border-top: 1px solid var(--line); text-align: right; font: 500 15px/1.2 var(--f-mono); white-space: nowrap; }
+td:first-child { font: 700 15px/1.2 var(--f-body); }
+td.time { font: 900 26px/1 var(--f-display); letter-spacing: .01em; }
+.up { color: var(--good); } .down { color: var(--warn); }
+
+/* Couloirs : effort relatif en % de VMA */
+.lanes { margin-top: 18px; display: flex; flex-direction: column; gap: 6px; }
+.lanes-title { font: 500 11.5px/1.2 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 18px; }
+.lane { display: grid; grid-template-columns: 78px minmax(0, 1fr) 46px; gap: 10px; align-items: center; }
+.lane .ln { font: 700 14px/1 var(--f-body); }
+.lane b { font: 500 14px/1 var(--f-mono); text-align: right; }
+.track { position: relative; height: 16px; border-radius: 3px; overflow: hidden;
+  background: repeating-linear-gradient(90deg, var(--field) 0 9px, var(--line) 9px 10px); border: 1px solid var(--line); }
+.track i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, var(--accent), var(--hot)); }
+.track u { position: absolute; top: -2px; bottom: -2px; width: 3px; background: var(--ink); transform: skewX(-12deg); }
+.mini { height: 6px; margin-top: 6px; background: var(--line); border-radius: 3px; overflow: hidden; min-width: 90px; }
+.mini i { display: block; height: 100%; background: var(--accent); }
+
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; }
+.stat { padding: 12px 0; border-top: 1px solid var(--line); min-width: 0; }
+.stat .k { font: 500 11px/1.2 var(--f-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.stat .v { font: 900 34px/1.05 var(--f-display); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.stat .v small { font: 400 12px/1 var(--f-mono); color: var(--muted); letter-spacing: 0; margin-left: 5px; }
+.stat .d { font: 400 12px/1.35 var(--f-mono); color: var(--muted); margin-top: 2px; }
+
+.level { margin: 18px 0 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: 15px; }
+.level b { font: 900 24px/1 var(--f-display); text-transform: uppercase; letter-spacing: .02em; }
+ul.assume { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 13.5px; max-width: 62ch; }
+ul.assume li { margin: 5px 0; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<header class="hero bleed">
+  <div class="hero-in">
+    <p class="kicker">Calculateur de course</p>
+    <h1>Prévisions Chrono</h1>
+    <p class="lede">Ton poids, tes records, tes séances validées. Chronos, allures et vitesses se recalculent à chaque changement.</p>
+    <p style="margin:16px 0 0"><button id="install" class="chip solid" type="button" hidden><span>Installer l'appli</span></button></p>
+  </div>
+</header>
+
+<div class="board bleed" role="status" aria-live="polite">
+  <div class="board-in" id="board"></div>
+</div>
+
+<div class="wrap">
+  <section>
+    <div class="sec-head"><h2>Profil</h2></div>
+    <p class="hint">Le poids de course sert à simuler une perte ou une prise de poids par rapport à celui des séances.</p>
+    <div class="grid three">
+      <label class="f"><span>Poids séances (kg)</span><input id="wSession" inputmode="decimal" autocomplete="off"></label>
+      <label class="f"><span>Poids course (kg)</span><input id="wRace" inputmode="decimal" autocomplete="off"></label>
+      <label class="f"><span>Âge</span><input id="age" inputmode="numeric" autocomplete="off"></label>
+      <label class="f"><span>FC max (bpm)</span><input id="hrMax" inputmode="numeric" autocomplete="off"></label>
+      <label class="f"><span>FC seuil (bpm)</span><input id="lthr" inputmode="numeric" autocomplete="off"></label>
+      <label class="f"><span>Km par semaine</span><input id="volume" inputmode="decimal" autocomplete="off"></label>
+    </div>
+    <div class="note" id="ageNote"></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Records</h2></div>
+    <p class="hint">Laisse vide ce que tu n'as pas. Les records servent de point d'appui et de comparaison.</p>
+    <div class="grid three">
+      <label class="f"><span>5 km</span><input id="r5" placeholder="mm:ss" autocomplete="off"></label>
+      <label class="f"><span>10 km</span><input id="r10" placeholder="mm:ss" autocomplete="off"></label>
+      <label class="f"><span>Semi</span><input id="rhm" placeholder="h:mm:ss" autocomplete="off"></label>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Séances validées</h2></div>
+    <p class="hint">Coche une séance quand tu l'as réussie à l'allure prévue. Décoche-la pour voir l'effet sur tes chronos. Écris le bloc avec son unité : 20', 4' ou 400 m.</p>
+    <div class="sessions" id="sessions"></div>
+    <button class="add" id="add" type="button">+ Ajouter une séance</button>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Chronos prévus</h2></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Distance</th><th>Chrono</th><th>Allure /km</th><th>km/h</th></tr></thead>
+        <tbody id="preds"></tbody>
+      </table>
+    </div>
+    <div class="lanes-title" id="lanesTitle" hidden>Effort en % de ta VMA</div>
+    <div class="lanes" id="lanes"></div>
+    <div class="note" id="lanesNote" hidden>Le trait noir marque un repère indicatif pour un coureur bien entraîné.</div>
+    <div class="grid" style="margin-top:16px">
+      <label class="f"><span>Autre distance (km)</span><input id="custom" inputmode="decimal" autocomplete="off"></label>
+    </div>
+    <div class="level" id="level"></div>
+  </section>
+
+  <section id="converter">
+    <div class="sec-head"><h2>Convertisseur</h2></div>
+    <p class="hint">Remplis deux champs, le troisième se calcule. Quand tu en modifies un nouveau, le plus ancien est remplacé.</p>
+    <div class="chips" id="cPresets"></div>
+    <div class="grid">
+      <label class="f"><span>Distance (km)</span><input id="cDist" inputmode="decimal" autocomplete="off" placeholder="10 ou 400 m"><i class="calc-tag" hidden>calculé</i></label>
+      <label class="f"><span>Temps</span><input id="cTime" inputmode="text" autocomplete="off" placeholder="h:mm:ss"><i class="calc-tag" hidden>calculé</i></label>
+      <label class="f"><span>Allure (min/km)</span><input id="cPace" inputmode="text" autocomplete="off" placeholder="m:ss"><i class="calc-tag" hidden>calculé</i></label>
+      <label class="f"><span>Vitesse (km/h)</span><input id="cSpeed" inputmode="decimal" autocomplete="off" placeholder="12,5"><i class="calc-tag" hidden>calculé</i></label>
+    </div>
+    <div class="note" id="cInfo"></div>
+    <div class="chips-label" id="cFromLabel" hidden>Reprendre mes prévisions</div>
+    <div class="chips" id="cFrom"></div>
+    <div class="tablewrap" style="margin-top:6px">
+      <table>
+        <thead><tr><th>À cette allure</th><th>Temps</th></tr></thead>
+        <tbody id="cPass"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Profil physio</h2></div>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Allures</h2></div>
+    <p class="hint">Allures d'entraînement calculées à partir de ton niveau sur 10 km. La barre indique la part de ta VMA.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Séance</th><th>Allure /km</th><th>km/h</th></tr></thead>
+        <tbody id="paces"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Zones cardio</h2></div>
+    <p class="hint">Basées sur ta FC de seuil.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Zone</th><th>Battements / min</th></tr></thead>
+        <tbody id="zones"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Méthode</h2></div>
+    <ul class="assume">
+      <li>Chaque séance validée donne un niveau en VDOT (indice de Daniels) : seuil continu, intervalles de 3 à 5 minutes, ou répétitions courtes de 400 m.</li>
+      <li>Le poids de chaque type de séance change avec la distance : le seuil compte surtout sur 10 km et semi, la VO2max sur 5 km.</li>
+      <li>Le volume hebdomadaire retire quelques pour cent au niveau quand il est sous ce que demande la distance, surtout sur semi.</li>
+      <li>Le poids de course modifie l'allure de 0,55 à 0,8 % par kg selon la distance.</li>
+      <li>L'âge sert à la FC max théorique. Il ne corrige pas les chronos tant que les séances sont faites aujourd'hui.</li>
+      <li>VMA = vitesse maximale aérobie, VO2max = VMA × 3,5. C'est une estimation à ± 4 ml/kg/min, pas un test en laboratoire.</li>
+      <li>Les séances sur tapis donnent des vitesses moins fiables que celles faites dehors.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+/* Noyau de calcul : modèle VDOT (Daniels) pondéré par type de séance,
+   corrigé du volume hebdomadaire et du poids. */
+(function (root) {
+  'use strict';
+
+  // Paramètres par distance (ancrés sur 5 km, 10 km, semi) puis interpolés en log(distance).
+  // w : poids de chaque type de séance ; vref/k : pénalité de volume ; s : % d'allure par kg.
+  var ANCHORS = [
+    { t: 0,      vref: 40, k: 0.045, s: 0.0055, w: { seuil: 0.40, vo2: 0.45, vma: 0.15 } },
+    { t: 0.4814, vref: 45, k: 0.050, s: 0.0070, w: { seuil: 0.55, vo2: 0.35, vma: 0.10 } },
+    { t: 1,      vref: 55, k: 0.110, s: 0.0080, w: { seuil: 0.70, vo2: 0.22, vma: 0.08 } }
+  ];
+  var PRIOR_WEIGHT = 0.15;
+  var HM = 21097.5;
+
+  function tPar(d) { return (Math.log(d) - Math.log(5000)) / (Math.log(HM) - Math.log(5000)); }
+
+  function lerp(a, b, x) { return a + (b - a) * x; }
+
+  function paramsAt(d) {
+    var t = tPar(d), A = ANCHORS, out = { w: {} }, i, seg, x;
+    var tc = Math.max(0, t);
+    if (tc <= A[1].t) { seg = [A[0], A[1]]; x = tc / A[1].t; }
+    else { seg = [A[1], A[2]]; x = (tc - A[1].t) / (A[2].t - A[1].t); }
+    ['vref', 'k', 's'].forEach(function (key) { out[key] = lerp(seg[0][key], seg[1][key], x); });
+    var xw = Math.min(1, x);
+    ['seuil', 'vo2', 'vma'].forEach(function (c) {
+      out.w[c] = tc <= A[1].t ? lerp(A[0].w[c], A[1].w[c], xw)
+                              : lerp(A[1].w[c], A[2].w[c], Math.min(1, xw));
+    });
+    out.k = Math.min(out.k, 0.20);
+    return out;
+  }
+
+  // --- Équations de Daniels ---
+  function vo2AtV(v) { return -4.60 + 0.182258 * v + 0.000104 * v * v; }
+  function frac(tMin) {
+    return 0.8 + 0.1894393 * Math.exp(-0.012778 * tMin) + 0.2989558 * Math.exp(-0.1932605 * tMin);
+  }
+  function vdotFrom(d, tSec) { var tm = tSec / 60; return vo2AtV(d / tm) / frac(tm); }
+  function vAtVo2(vo2) {
+    var a = 0.000104, b = 0.182258, c = -4.60 - vo2;
+    return (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+  }
+  function timeFromVdot(d, vdot) {
+    var lo = d / 8, hi = d / 1.5, mid, i;
+    for (i = 0; i < 70; i++) {
+      mid = (lo + hi) / 2;
+      if (vdotFrom(d, mid) > vdot) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
+  // --- Lecture / mise en forme ---
+  function parseTime(str) {
+    if (str == null) return NaN;
+    var s = String(str).trim().replace(/[hH]/g, ':').replace(/['’′"]/g, ':').replace(/:+$/, '');
+    if (!s) return NaN;
+    var p = s.split(':');
+    if (p.length > 3 || p.some(function (x) { return !/^\d+(\.\d+)?$/.test(x.trim()); })) return NaN;
+    var n = p.map(Number), sec;
+    if (n.length === 3) sec = n[0] * 3600 + n[1] * 60 + n[2];
+    else if (n.length === 2) sec = n[0] * 60 + n[1];
+    else sec = n[0] * 60;
+    return sec > 0 ? sec : NaN;
+  }
+  function parsePace(str) {
+    if (str == null) return NaN;
+    var s = String(str).trim().toLowerCase().replace('/km', '').replace(/['’′]/g, ':').replace(/:+$/, '');
+    var m = /^(\d{1,2}):(\d{1,2})$/.exec(s);
+    if (!m) return NaN;
+    var sec = Number(m[1]) * 60 + Number(m[2]);
+    return sec >= 120 && sec <= 900 ? sec : NaN;
+  }
+  // Renvoie la durée du bloc en minutes (depuis "20'", "400 m", "3 km", "90 s").
+  function parseBlock(str, paceSec) {
+    if (str == null) return NaN;
+    var s = String(str).trim().toLowerCase().replace(',', '.');
+    var m = /^(\d+(?:\.\d+)?)\s*(km|m|min|mn|'|’|s|")$/.exec(s);
+    if (!m) return NaN;
+    var val = Number(m[1]), u = m[2];
+    if (u === 'km') return (val * paceSec) / 60;
+    if (u === 'm') return (val / 1000) * paceSec / 60;
+    if (u === 's' || u === '"') return val / 60;
+    return val;
+  }
+  // Distance en km depuis "10", "10,5", "400 m", "6 mi".
+  function parseDist(str) {
+    if (str == null) return NaN;
+    var m = /^(\d+(?:[.,]\d+)?)\s*(km|m|mi)?$/.exec(String(str).trim().toLowerCase());
+    if (!m) return NaN;
+    var v = Number(m[1].replace(',', '.')), u = m[2] || 'km';
+    var km = u === 'm' ? v / 1000 : (u === 'mi' ? v * 1.609344 : v);
+    return km > 0 && km <= 500 ? km : NaN;
+  }
+  function parseSpeed(str) {
+    if (str == null) return NaN;
+    var s = String(str).trim().toLowerCase().replace('km/h', '').replace(',', '.').trim();
+    if (!/^\d+(\.\d+)?$/.test(s)) return NaN;
+    var v = Number(s);
+    return v >= 3 && v <= 40 ? v : NaN;
+  }
+  function fmtDist(km) {
+    if (!isFinite(km)) return '';
+    var s = (Math.round(km * 1000) / 1000).toString().replace('.', ',');
+    return s;
+  }
+  // Résout distance (km), temps (s) et allure (s/km) à partir de deux valeurs connues.
+  function convSolve(known) {
+    var d = known.dist, t = known.time, r = known.rate;
+    var have = [d, t, r].map(function (x) { return isFinite(x); });
+    if (have.filter(Boolean).length < 2) return null;
+    if (!have[0]) d = t / r;
+    else if (!have[1]) t = d * r;
+    else if (!have[2]) r = t / d;
+    else r = t / d; // trois valeurs : le temps et la distance priment
+    return { dist: d, time: t, rate: r };
+  }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtTime(sec) {
+    if (!isFinite(sec)) return '—';
+    var r = Math.round(sec), h = Math.floor(r / 3600), m = Math.floor((r % 3600) / 60), s = r % 60;
+    return h > 0 ? h + ':' + pad(m) + ':' + pad(s) : m + ':' + pad(s);
+  }
+  function fmtPace(secKm) {
+    if (!isFinite(secKm)) return '—';
+    var r = Math.round(secKm);
+    return Math.floor(r / 60) + ':' + pad(r % 60);
+  }
+  function fmtDelta(sec) {
+    var r = Math.round(sec), sign = r < 0 ? '−' : '+', a = Math.abs(r);
+    return sign + Math.floor(a / 60) + ':' + pad(a % 60);
+  }
+  function kmh(secKm) { return 3600 / secKm; }
+
+  // --- Calcul principal ---
+  var TYPE_LABEL = { seuil: 'Seuil', vo2: 'VO2max', vma: 'VMA courte' };
+
+  function analyseSession(s) {
+    var out = { id: s.id, type: s.type, ok: false, msg: '' };
+    var pace = parsePace(s.pace);
+    var n = Number(String(s.n).replace(',', '.'));
+    if (!isFinite(pace)) { out.msg = 'Allure à écrire comme 4:45'; return out; }
+    if (!(n >= 1 && n <= 60)) { out.msg = 'Nombre de blocs entre 1 et 60'; return out; }
+    var tb = parseBlock(s.block, pace);
+    if (!isFinite(tb)) { out.msg = "Bloc à écrire comme 20' ou 400 m"; return out; }
+    var v = 60000 / pace; // m/min
+    out.v = v; out.tb = tb; out.total = tb * n; out.n = n;
+    if (s.type === 'seuil') {
+      var f = 0.88 + 0.04 * Math.max(0, (20 - out.total) / 20);
+      out.vdot = vo2AtV(v) / f;
+      out.vvo2 = v / 0.82;
+      out.vvo2w = 0.5;
+    } else {
+      var g = Math.min(1.10, Math.max(0.95, 1 + 0.0275 * (4 - tb)));
+      var vv = v / g;
+      out.vvo2 = vv; out.vvo2w = 1;
+      out.vdot = vo2AtV(vv);
+    }
+    out.ok = true;
+    return out;
+  }
+
+  function compute(st) {
+    var res = { sessions: [], cats: {}, prior: null, preds: [], flags: {} };
+    var i, cats = { seuil: [], vo2: [], vma: [] }, vvo = [];
+
+    (st.sessions || []).forEach(function (s) {
+      var a = analyseSession(s);
+      a.on = !!s.on;
+      res.sessions.push(a);
+      if (a.ok && a.on) { cats[s.type].push(a.vdot); vvo.push([a.vvo2, a.vvo2w]); }
+    });
+    ['seuil', 'vo2', 'vma'].forEach(function (c) {
+      if (cats[c].length) res.cats[c] = Math.max.apply(null, cats[c]);
+    });
+
+    var recs = [
+      { key: 'r5', d: 5000, v: parseTime(st.records.r5) },
+      { key: 'r10', d: 10000, v: parseTime(st.records.r10) },
+      { key: 'rhm', d: HM, v: parseTime(st.records.rhm) }
+    ];
+    var rv = [];
+    recs.forEach(function (r) { if (isFinite(r.v)) rv.push(vdotFrom(r.d, r.v)); });
+    if (rv.length) res.prior = rv.reduce(function (a, b) { return a + b; }, 0) / rv.length;
+
+    var vol = Number(String(st.volume).replace(',', '.'));
+    var wS = Number(String(st.wSession).replace(',', '.'));
+    var wR = Number(String(st.wRace).replace(',', '.'));
+    var hasVol = isFinite(vol) && vol > 0, hasW = isFinite(wS) && isFinite(wR) && wS > 30 && wR > 30;
+
+    function vdotAt(d) {
+      var p = paramsAt(d), items = [], sumW = 0, c;
+      ['seuil', 'vo2', 'vma'].forEach(function (c) {
+        if (res.cats[c] != null) { items.push([res.cats[c], p.w[c]]); sumW += p.w[c]; }
+      });
+      var blend;
+      if (!items.length && res.prior == null) return null;
+      if (!items.length) blend = res.prior;
+      else {
+        var share = res.prior != null ? 1 - PRIOR_WEIGHT : 1;
+        blend = items.reduce(function (a, it) { return a + it[0] * it[1] / sumW * share; }, 0);
+        if (res.prior != null) blend += res.prior * PRIOR_WEIGHT;
+      }
+      var pen = hasVol ? Math.min(0.25, p.k * Math.max(0, 1 - vol / p.vref)) : 0;
+      return { vdot: blend * (1 - pen), pen: pen, p: p };
+    }
+
+    var targets = [
+      { label: '5 km', d: 5000, rec: recs[0].v },
+      { label: '10 km', d: 10000, rec: recs[1].v },
+      { label: 'Semi-marathon', d: HM, rec: recs[2].v }
+    ];
+    var cd = Number(String(st.custom).replace(',', '.'));
+    if (isFinite(cd) && cd >= 1 && cd <= 42.2 && [5, 10, 21.0975].indexOf(cd) < 0) {
+      targets.push({ label: (cd % 1 === 0 ? cd : String(cd).replace('.', ',')) + ' km', d: cd * 1000, rec: NaN, custom: true });
+    }
+    targets.forEach(function (t) {
+      var r = vdotAt(t.d);
+      if (!r) return;
+      var sec = timeFromVdot(t.d, r.vdot);
+      if (hasW) sec *= 1 + r.p.s * (wR - wS);
+      var pace = sec / (t.d / 1000);
+      res.preds.push({ label: t.label, d: t.d, sec: sec, pace: pace, kmh: kmh(pace), vdot: r.vdot,
+        delta: isFinite(t.rec) ? sec - t.rec : null, custom: !!t.custom });
+    });
+
+    // VMA / VO2max
+    var vma = null, source = '';
+    if (vvo.length) {
+      var sw = vvo.reduce(function (a, x) { return a + x[1]; }, 0);
+      vma = vvo.reduce(function (a, x) { return a + x[0] * x[1]; }, 0) / sw * 60 / 1000;
+      source = 'séances';
+    } else if (res.prior != null) {
+      vma = vAtVo2(res.prior) * 60 / 1000;
+      source = 'records';
+    }
+    if (vma) {
+      res.vma = { kmh: vma, pace: 3600 / vma, vo2max: vma * 3.5, source: source,
+        abs: hasW ? vma * 3.5 * wS / 1000 : null };
+    }
+
+    // Allures d'entraînement depuis le VDOT du 10 km
+    var ref = res.preds.filter(function (p) { return p.d === 10000; })[0];
+    if (ref) {
+      var at = function (f) { return 60000 / vAtVo2(ref.vdot * f); };
+      var vI = vAtVo2(ref.vdot);
+      res.paces = {
+        vdot: ref.vdot,
+        easy: [at(0.66), at(0.59)],      // du plus rapide au plus lent
+        seuil: at(0.88),
+        vo2: at(1.0),
+        rep: 60000 / (vI * 1.08)
+      };
+    }
+
+    // Zones cardio (Friel, sur la FC de seuil)
+    var hrMax = Number(st.hrMax), lthr = Number(st.lthr), age = Number(st.age);
+    if (isFinite(age) && age > 10 && age < 90) res.tanaka = Math.round(208 - 0.7 * age);
+    if (!(lthr > 90) && hrMax > 120) lthr = 0.89 * hrMax;
+    if (lthr > 90) {
+      var b = [0.85, 0.90, 0.95, 1.00].map(function (x) { return Math.round(lthr * x); });
+      res.zones = [
+        { name: 'Z1 Récupération', r: [null, b[0] - 1] },
+        { name: 'Z2 Endurance', r: [b[0], b[1] - 1] },
+        { name: 'Z3 Tempo', r: [b[1], b[2] - 1] },
+        { name: 'Z4 Seuil', r: [b[2], b[3] - 1] },
+        { name: 'Z5 VO2max', r: [b[3], hrMax > lthr ? Math.round(hrMax) : null] }
+      ];
+    }
+    return res;
+  }
+
+  var api = { compute: compute, parseTime: parseTime, parsePace: parsePace, parseBlock: parseBlock,
+    parseDist: parseDist, parseSpeed: parseSpeed, fmtDist: fmtDist, convSolve: convSolve,
+    fmtTime: fmtTime, fmtPace: fmtPace, fmtDelta: fmtDelta, kmh: kmh, vdotFrom: vdotFrom,
+    timeFromVdot: timeFromVdot, vAtVo2: vAtVo2, vo2AtV: vo2AtV, TYPE_LABEL: TYPE_LABEL };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.Core = api;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+(function () {
+  'use strict';
+  var C = window.Core;
+  var KEY = 'prevision-chrono-v1';
+  var DEFAULTS = {
+    wSession: '94', wRace: '94', age: '25', hrMax: '196', lthr: '175', volume: '34', custom: '15',
+    records: { r5: '', r10: '46:31', rhm: '' },
+    sessions: [
+      { id: 1, type: 'seuil', n: '2', block: "20'", pace: '4:45', on: true },
+      { id: 2, type: 'vo2', n: '6', block: "4'", pace: '4:00', on: true },
+      { id: 3, type: 'vma', n: '10', block: '400 m', pace: '3:35', on: true }
+    ],
+    conv: { dist: '10', time: '', pace: '4:30', speed: '', order: ['dist', 'rate'], rateField: 'pace' }
+  };
+  var TOP = ['wSession', 'wRace', 'age', 'hrMax', 'lthr', 'volume', 'custom'];
+  var REC = ['r5', 'r10', 'rhm'];
+
+  function load() {
+    var st = JSON.parse(JSON.stringify(DEFAULTS));
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var s = JSON.parse(raw);
+        TOP.forEach(function (k) { if (typeof s[k] === 'string') st[k] = s[k]; });
+        if (s.records) REC.forEach(function (k) { if (typeof s.records[k] === 'string') st.records[k] = s.records[k]; });
+        if (Array.isArray(s.sessions)) {
+          st.sessions = s.sessions.filter(function (x) { return x && ['seuil', 'vo2', 'vma'].indexOf(x.type) >= 0; })
+            .map(function (x, i) {
+              return { id: Number(x.id) || i + 1, type: x.type, n: String(x.n), block: String(x.block),
+                pace: String(x.pace), on: !!x.on };
+            });
+        }
+        var c = s.conv;
+        if (c && Array.isArray(c.order) && c.order.length === 2 &&
+            c.order.every(function (v) { return ['dist', 'time', 'rate'].indexOf(v) >= 0; }) &&
+            (c.rateField === 'pace' || c.rateField === 'speed')) {
+          st.conv = { dist: String(c.dist || ''), time: String(c.time || ''), pace: String(c.pace || ''),
+            speed: String(c.speed || ''), order: c.order.slice(), rateField: c.rateField };
+        }
+      }
+    } catch (e) { /* stockage indisponible : valeurs de départ */ }
+    return st;
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignoré */ } }
+
+  var state = load();
+  var $ = function (id) { return document.getElementById(id); };
+  var f1 = function (x) { return x.toFixed(1).replace('.', ','); };
+  var f2 = function (x) { return x.toFixed(2).replace('.', ','); };
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // --- Champs du haut ---
+  TOP.forEach(function (k) {
+    var el = $(k); el.value = state[k];
+    el.addEventListener('input', function () { state[k] = el.value; save(); render(); });
+  });
+  REC.forEach(function (k) {
+    var el = $(k); el.value = state.records[k];
+    el.addEventListener('input', function () { state.records[k] = el.value; save(); render(); });
+  });
+
+  // --- Séances ---
+  var box = $('sessions');
+  function typeOptions(sel) {
+    return Object.keys(C.TYPE_LABEL).map(function (t) {
+      return '<option value="' + t + '"' + (t === sel ? ' selected' : '') + '>' + C.TYPE_LABEL[t] + '</option>';
+    }).join('');
+  }
+  function sessionHtml(s) {
+    return '<div class="sess' + (s.on ? '' : ' off') + '" data-id="' + s.id + '" data-type="' + s.type + '">' +
+      '<div class="sess-head"><i class="dot"></i>' +
+      '<select data-f="type" aria-label="Type de séance">' + typeOptions(s.type) + '</select>' +
+      '<label class="chk"><input type="checkbox" data-f="on"' + (s.on ? ' checked' : '') + '><span></span>Validée</label>' +
+      '<button class="del" type="button" aria-label="Supprimer la séance">×</button></div>' +
+      '<div class="sess-grid">' +
+      '<label class="f"><span>Blocs</span><input data-f="n" inputmode="numeric" autocomplete="off" value="' + esc(s.n) + '"></label>' +
+      '<label class="f"><span>Bloc</span><input data-f="block" autocomplete="off" value="' + esc(s.block) + '"></label>' +
+      '<label class="f"><span>Allure /km</span><input data-f="pace" autocomplete="off" placeholder="m:ss" value="' + esc(s.pace) + '"></label>' +
+      '</div><div data-out></div></div>';
+  }
+  function renderSessions() { box.innerHTML = state.sessions.map(sessionHtml).join(''); }
+  function findSession(el) {
+    var card = el.closest('.sess'); if (!card) return null;
+    var id = Number(card.getAttribute('data-id'));
+    return { card: card, s: state.sessions.filter(function (x) { return x.id === id; })[0] };
+  }
+  box.addEventListener('input', function (e) {
+    var t = e.target, hit = findSession(t); if (!hit || !hit.s || !t.getAttribute('data-f')) return;
+    var k = t.getAttribute('data-f');
+    hit.s[k] = k === 'on' ? t.checked : t.value;
+    if (k === 'on') hit.card.classList.toggle('off', !t.checked);
+    if (k === 'type') hit.card.setAttribute('data-type', t.value);
+    save(); render();
+  });
+  box.addEventListener('click', function (e) {
+    if (!e.target.classList.contains('del')) return;
+    var hit = findSession(e.target); if (!hit || !hit.s) return;
+    state.sessions = state.sessions.filter(function (x) { return x !== hit.s; });
+    save(); renderSessions(); render();
+  });
+  $('add').addEventListener('click', function () {
+    var id = state.sessions.reduce(function (m, x) { return Math.max(m, x.id); }, 0) + 1;
+    state.sessions.push({ id: id, type: 'vo2', n: '5', block: "4'", pace: '4:05', on: true });
+    save(); renderSessions(); render();
+  });
+
+  // --- Convertisseur ---
+  var CF = { cDist: 'dist', cTime: 'time', cPace: 'pace', cSpeed: 'speed' };
+  var PRESETS = [['400 m', 0.4], ['1 km', 1], ['5 km', 5], ['10 km', 10], ['Semi', 21.0975], ['Marathon', 42.195]];
+  var PASS = [['400 m', 0.4], ['1 km', 1], ['5 km', 5], ['10 km', 10], ['Semi-marathon', 21.0975], ['Marathon', 42.195]];
+  var lastPreds = [];
+
+  function chip(label, attrs, cls) {
+    return '<button class="chip' + (cls ? ' ' + cls : '') + '" type="button" ' + attrs + '><span>' + esc(label) + '</span></button>';
+  }
+  $('cPresets').innerHTML = PRESETS.map(function (p) { return chip(p[0], 'data-d="' + p[1] + '"'); }).join('');
+
+  function touch(field, value) {
+    var cv = state.conv, key = CF[field];
+    cv[key] = value;
+    var v = field === 'cDist' ? 'dist' : (field === 'cTime' ? 'time' : 'rate');
+    if (v === 'rate') cv.rateField = key;
+    cv.order = cv.order.filter(function (x) { return x !== v; }).concat(v).slice(-2);
+  }
+
+  function recalcConv() {
+    var cv = state.conv, known = { dist: NaN, time: NaN, rate: NaN }, bad = false;
+    cv.order.forEach(function (v) {
+      var x;
+      if (v === 'dist') x = C.parseDist(cv.dist);
+      else if (v === 'time') x = C.parseTime(cv.time);
+      else x = cv.rateField === 'pace' ? C.parsePace(cv.pace) : 3600 / C.parseSpeed(cv.speed);
+      if (!isFinite(x)) bad = true; else known[v] = x;
+    });
+    var sol = bad ? null : C.convSolve(known);
+    var calc = { cDist: cv.order.indexOf('dist') < 0, cTime: cv.order.indexOf('time') < 0,
+      cPace: cv.order.indexOf('rate') < 0 || cv.rateField !== 'pace',
+      cSpeed: cv.order.indexOf('rate') < 0 || cv.rateField !== 'speed' };
+    if (sol) {
+      if (calc.cDist) cv.dist = C.fmtDist(sol.dist);
+      if (calc.cTime) cv.time = C.fmtTime(sol.time);
+      if (calc.cPace) cv.pace = C.fmtPace(sol.rate);
+      if (calc.cSpeed) cv.speed = f2(3600 / sol.rate);
+    }
+    Object.keys(CF).forEach(function (id) {
+      var el = $(id), tag = el.parentNode.querySelector('.calc-tag');
+      if (calc[id] && !sol) { el.value = ''; cv[CF[id]] = ''; }
+      else if (el !== document.activeElement || calc[id]) el.value = cv[CF[id]];
+      el.classList.toggle('calc', !!calc[id] && !!sol);
+      if (tag) tag.hidden = !(calc[id] && sol);
+    });
+    var info = $('cInfo'), pass = $('cPass');
+    if (!sol) {
+      info.textContent = bad ? 'Vérifie le format : distance 10 ou 400 m, temps 1:44:30, allure 4:30, vitesse 13,2.' : '';
+      pass.innerHTML = '';
+      return;
+    }
+    var r = sol.rate, kmh = 3600 / r;
+    info.innerHTML = f2(1000 / r) + ' m/s · ' + C.fmtPace(r * 1.609344) + ' /mile · ' + f1(kmh / 1.609344) +
+      ' mph · 400 m en ' + C.fmtTime(r * 0.4) + ' · 1 000 m en ' + C.fmtTime(r);
+    pass.innerHTML = PASS.map(function (p) {
+      return '<tr><td>' + p[0] + '</td><td class="time">' + C.fmtTime(r * p[1]) + '</td></tr>';
+    }).join('');
+  }
+
+  Object.keys(CF).forEach(function (id) {
+    $(id).addEventListener('input', function (e) { touch(id, e.target.value); save(); recalcConv(); });
+  });
+  $('cPresets').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    touch('cDist', C.fmtDist(Number(b.getAttribute('data-d'))));
+    save(); recalcConv();
+  });
+  $('cFrom').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var p = lastPreds[Number(b.getAttribute('data-i'))]; if (!p) return;
+    touch('cDist', C.fmtDist(p.d / 1000));
+    touch('cTime', C.fmtTime(p.sec));
+    save(); recalcConv();
+  });
+
+  // --- Affichage ---
+  function sessionOut(a) {
+    if (!a.ok) return '<div class="sess-err">' + esc(a.msg) + '</div>';
+    var line = 'Bloc <b>' + C.fmtTime(a.tb * 60) + '</b> · total <b>' + Math.round(a.total) + ' min</b> · <b>' +
+      f1(a.v * 0.06) + ' km/h</b> · niveau <b>VDOT ' + f1(a.vdot) + '</b>';
+    if (a.type !== 'seuil') line += '<br>VMA déduite <b>' + f1(a.vvo2 * 0.06) + ' km/h</b>';
+    else line += '<br>Seuil, soit environ <b>' + f1(a.vvo2 * 0.06) + ' km/h</b> de VMA';
+    return '<div class="sess-out">' + line + '</div>';
+  }
+  function levelName(v) {
+    if (v < 35) return 'Débutant';
+    if (v < 40) return 'Intermédiaire';
+    if (v < 45) return 'Confirmé';
+    if (v < 50) return 'Bon amateur';
+    if (v < 55) return 'Avancé';
+    return 'Expert';
+  }
+  var REPERE = { '5 km': 95, '10 km': 88, 'Semi-marathon': 82 };
+
+  function render() {
+    var r = C.compute(state);
+    lastPreds = r.preds;
+
+    r.sessions.forEach(function (a) {
+      var out = box.querySelector('[data-id="' + a.id + '"] [data-out]');
+      if (out) out.innerHTML = sessionOut(a);
+    });
+
+    // bandeau
+    var main = ['5 km', '10 km', 'Semi-marathon'].map(function (l) {
+      return r.preds.filter(function (p) { return p.label === l; })[0];
+    });
+    var labels = ['5 km', '10 km', 'Semi'];
+    $('board').innerHTML = main.map(function (p, i) {
+      if (!p) return '<div class="cell"><div class="lab">' + labels[i] + '</div><div class="big">—</div></div>';
+      var d = p.delta != null ? ' <b>' + C.fmtDelta(p.delta) + '</b>' : '';
+      return '<div class="cell"><div class="lab">' + labels[i] + '</div><div class="big">' + C.fmtTime(p.sec) +
+        '</div><div class="sub">' + C.fmtPace(p.pace) + '/km' + d + '</div></div>';
+    }).join('');
+
+    // tableau des chronos
+    $('preds').innerHTML = r.preds.length ? r.preds.map(function (p) {
+      var cls = p.delta == null ? '' : (p.delta <= 0 ? 'up' : 'down');
+      var rec = p.delta != null ? '<div class="note ' + cls + '" style="margin:3px 0 0">' + C.fmtDelta(p.delta) + ' vs record</div>' : '';
+      return '<tr><td>' + esc(p.label) + rec + '</td><td class="time">' + C.fmtTime(p.sec) + '</td><td>' +
+        C.fmtPace(p.pace) + '</td><td>' + f2(p.kmh) + '</td></tr>';
+    }).join('') : '<tr><td colspan="4" style="text-align:left;color:var(--muted)">Valide au moins une séance ou ajoute un record pour obtenir des chronos.</td></tr>';
+
+    // couloirs : % de VMA
+    var showLanes = !!(r.vma && main.some(Boolean));
+    $('lanesTitle').hidden = !showLanes; $('lanesNote').hidden = !showLanes;
+    $('lanes').innerHTML = showLanes ? main.filter(Boolean).map(function (p) {
+      var pct = p.kmh / r.vma.kmh * 100, w = Math.max(0, Math.min(100, pct));
+      return '<div class="lane"><span class="ln">' + esc(p.label === 'Semi-marathon' ? 'Semi' : p.label) + '</span>' +
+        '<span class="track"><i style="width:' + w.toFixed(1) + '%"></i><u style="left:' + REPERE[p.label] + '%"></u></span>' +
+        '<b>' + Math.round(pct) + ' %</b></div>';
+    }).join('') : '';
+
+    var ref = r.preds.filter(function (p) { return p.d === 10000; })[0];
+    $('level').innerHTML = ref ? 'Niveau actuel : <b>' + levelName(ref.vdot) + '</b> · VDOT ' + f1(ref.vdot) + ' sur 10 km' : '';
+
+    // reprendre mes prévisions (convertisseur)
+    var fromBtns = main.map(function (p, i) { return p ? chip(['5 km', '10 km', 'Semi'][i], 'data-i="' + r.preds.indexOf(p) + '"', 'solid') : ''; }).join('');
+    $('cFrom').innerHTML = fromBtns; $('cFromLabel').hidden = !fromBtns;
+
+    // profil physiologique
+    var st = [];
+    if (r.vma) {
+      var src = r.vma.source === 'séances' ? 'déduite de tes séances' : 'déduite de tes records, plutôt prudente';
+      st.push(['VMA', f1(r.vma.kmh) + '<small>km/h</small>', C.fmtPace(r.vma.pace) + '/km · ' + src]);
+      var lo = Math.round(r.vma.vo2max - 4), hi = Math.round(r.vma.vo2max + 4);
+      st.push(['VO2max', Math.round(r.vma.vo2max) + '<small>ml/kg/min</small>',
+        'Entre ' + lo + ' et ' + hi + (r.vma.abs ? ' · ' + f1(r.vma.abs) + ' L/min' : '')]);
+    }
+    if (r.paces) {
+      var lt = Number(state.lthr) > 90 ? Number(state.lthr) : (Number(state.hrMax) > 120 ? Math.round(0.89 * Number(state.hrMax)) : null);
+      st.push(['Allure seuil', C.fmtPace(r.paces.seuil) + '<small>/km</small>', lt ? 'FC autour de ' + Math.round(lt) + ' bpm' : '']);
+      st.push(['Niveau VDOT', f1(r.paces.vdot), 'Indice de Daniels sur 10 km']);
+    }
+    $('stats').innerHTML = st.length ? st.map(function (x) {
+      return '<div class="stat"><div class="k">' + x[0] + '</div><div class="v">' + x[1] + '</div><div class="d">' + esc(x[2]) + '</div></div>';
+    }).join('') : '<div class="stat" style="grid-column:1/-1;color:var(--muted)">Pas encore de données.</div>';
+
+    // allures d'entraînement avec barre en % de VMA
+    if (r.paces) {
+      var p = r.paces, vmaK = r.vma ? r.vma.kmh : null;
+      var bar = function (kmhVal) {
+        if (!vmaK) return '';
+        var pc = kmhVal / vmaK * 100;
+        return '<div class="mini" title="' + Math.round(pc) + ' % de la VMA"><i style="width:' + Math.max(0, Math.min(100, pc)).toFixed(0) + '%"></i></div>';
+      };
+      var easyMid = C.kmh((p.easy[0] + p.easy[1]) / 2);
+      var rows = [
+        ['Footing facile', C.fmtPace(p.easy[0]) + ' à ' + C.fmtPace(p.easy[1]), f1(C.kmh(p.easy[1])) + ' à ' + f1(C.kmh(p.easy[0])), easyMid],
+        ['Seuil', C.fmtPace(p.seuil), f1(C.kmh(p.seuil)), C.kmh(p.seuil)],
+        ['VO2max (3 à 5 min)', C.fmtPace(p.vo2), f1(C.kmh(p.vo2)), C.kmh(p.vo2)],
+        ['Répétitions 200 à 400 m', C.fmtPace(p.rep), f1(C.kmh(p.rep)), C.kmh(p.rep)]
+      ];
+      $('paces').innerHTML = rows.map(function (x) {
+        return '<tr><td>' + x[0] + bar(x[3]) + '</td><td>' + x[1] + '</td><td>' + x[2] + '</td></tr>';
+      }).join('');
+    } else $('paces').innerHTML = '<tr><td colspan="3" style="text-align:left;color:var(--muted)">Disponible dès qu\'un chrono est calculé.</td></tr>';
+
+    // zones
+    $('zones').innerHTML = r.zones ? r.zones.map(function (z) {
+      var t = z.r[0] == null ? 'moins de ' + (z.r[1] + 1) : (z.r[1] == null ? z.r[0] + ' et plus' : z.r[0] + ' à ' + z.r[1]);
+      return '<tr><td>' + z.name + '</td><td>' + t + '</td></tr>';
+    }).join('') : '<tr><td colspan="2" style="text-align:left;color:var(--muted)">Renseigne ta FC de seuil ou ta FC max.</td></tr>';
+
+    var note = '';
+    if (r.tanaka) {
+      note = 'FC max théorique à ' + Number(state.age) + ' ans : ' + r.tanaka + ' bpm.';
+      if (Number(state.hrMax) > 120) note += ' Tu as indiqué ' + Number(state.hrMax) + ' bpm, c\'est cette valeur qui compte.';
+    }
+    $('ageNote').textContent = note;
+  }
+
+  renderSessions();
+  render();
+  recalcConv();
+})();
+
+</script>
+<script>
+(function () {
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+  var ev = null, btn = document.getElementById('install');
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); ev = e; if (btn) btn.hidden = false; });
+  if (btn) btn.addEventListener('click', function () {
+    if (!ev) return;
+    ev.prompt();
+    ev.userChoice.then(function () { ev = null; btn.hidden = true; });
+  });
+  window.addEventListener('appinstalled', function () { if (btn) btn.hidden = true; });
+})();
+</script>
+
+</html>

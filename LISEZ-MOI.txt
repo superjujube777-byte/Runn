@@ -1,0 +1,8 @@
+Prévisions Chrono : paquet installable (PWA)
+
+1. Mets tout le contenu de ce dossier sur un hébergement HTTPS : GitHub Pages, Netlify Drop, Cloudflare Pages ou ton propre site. Les fichiers doivent rester ensemble, à la même adresse.
+2. Ouvre l'adresse dans Chrome sur ton Android.
+3. Appuie sur « Installer l'appli » en haut de la page, ou sur le menu de Chrome (trois points) puis « Installer l'application ».
+4. L'icône apparaît sur l'écran d'accueil. L'appli s'ouvre en plein écran et fonctionne hors ligne après la première visite.
+
+Tes réglages restent enregistrés sur ton téléphone uniquement.
